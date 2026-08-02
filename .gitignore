@@ -1,0 +1,11 @@
+# Virtual environment
+venv/
+env/
+__pycache__/
+
+# Environment variables (Private keys, RPC URLs)
+.env
+
+# Editor files
+.vscode/
+.DS_Store
