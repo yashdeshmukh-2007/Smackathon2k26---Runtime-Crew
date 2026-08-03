@@ -333,3 +333,25 @@ def get_bridge() -> BlockchainBridge:
     if _bridge_instance is None:
         _bridge_instance = BlockchainBridge()
     return _bridge_instance
+def get_campaign_expenses(campaign_id: str):
+    """Fetches all transparency expenses logged for a specific campaign."""
+    try:
+        # Get all expense IDs for this campaign
+        expense_ids = contract.functions.getCampaignExpenseIds(campaign_id).call()
+        expenses_list = []
+        
+        # Fetch individual expense details
+        for exp_id in expense_ids:
+            expense = contract.functions.getExpense(exp_id).call()
+            expenses_list.append({
+                "spender": expense[0],
+                "amount_eth": w3.from_wei(expense[1], 'ether'),
+                "campaignId": expense[2],
+                "description": expense[3],
+                "receiptUrl": expense[4],
+                "timestamp": expense[5]
+            })
+            
+        return {"status": "success", "data": expenses_list}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
