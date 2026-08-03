@@ -6,7 +6,7 @@ import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../contractConfig';
 export default function DonorDashboard() {
   const [account, setAccount] = useState(null);
   const [amount, setAmount] = useState('');
-  const [purpose, setPurpose] = useState('');
+  const [campaignId, setCampaignId] = useState(''); // Updated from purpose -> campaignId
   const [donationsList, setDonationsList] = useState([]);
   const [totalEth, setTotalEth] = useState('0');
   const [loading, setLoading] = useState(false);
@@ -27,24 +27,26 @@ export default function DonorDashboard() {
     }
   };
 
-  // 2. Fetch All Donations from Contract
+  // 2. Fetch All Donations from Contract (Updated for DonationTracker.sol)
   const fetchDonations = async () => {
     if (!window.ethereum) return;
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 
-      const count = await contract.getDonationCount();
-      const rawTotal = await contract.totalDonations();
+      // Matches getDonationsCount() and totalAmountRaised()
+      const count = await contract.getDonationsCount();
+      const rawTotal = await contract.totalAmountRaised();
       setTotalEth(ethers.formatEther(rawTotal));
 
       const items = [];
       for (let i = 0; i < Number(count); i++) {
-        const item = await contract.donations(i);
+        // Matches getDonation(uint256 _index) view function
+        const item = await contract.getDonation(i);
         items.push({
           donor: item.donor,
           amount: ethers.formatEther(item.amount),
-          purpose: item.purpose,
+          campaignId: item.campaignId,
           timestamp: new Date(Number(item.timestamp) * 1000).toLocaleString()
         });
       }
@@ -57,7 +59,7 @@ export default function DonorDashboard() {
   // 3. Send Donation Transaction
   const handleDonate = async (e) => {
     e.preventDefault();
-    if (!amount || !purpose) return;
+    if (!amount || !campaignId) return;
     try {
       setLoading(true);
       setStatusMessage("Preparing transaction...");
@@ -69,19 +71,22 @@ export default function DonorDashboard() {
       const amountInWei = ethers.parseEther(amount);
 
       setStatusMessage("Please confirm transaction in MetaMask...");
-      const tx = await contract.recordDonation(purpose, { value: amountInWei });
+      
+      // Calls recordDonation(string campaignId)
+      const tx = await contract.recordDonation(campaignId, { value: amountInWei });
 
       setStatusMessage("Transaction submitted! Waiting for confirmation...");
       await tx.wait();
 
-      setStatusMessage("Donation recorded successfully on Sepolia testnet!");
+      setStatusMessage("Donation recorded successfully!");
       setAmount('');
-      setPurpose('');
+      setCampaignId('');
       
       await fetchDonations();
     } catch (err) {
       console.error("Donation failed:", err);
-      setStatusMessage("Transaction failed or was rejected.");
+      // Helpful error message if campaign isn't registered yet
+      setStatusMessage("Transaction failed. Ensure campaign is registered first!");
     } finally {
       setLoading(false);
     }
@@ -149,17 +154,17 @@ export default function DonorDashboard() {
         {/* Donation Action Form */}
         <section className="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-6 md:p-8 shadow-xl">
           <h2 className="text-xl font-bold text-slate-100 mb-1">Make an On-Chain Donation</h2>
-          <p className="text-sm text-slate-400 mb-6">Transactions are immutably written directly to the Ethereum Sepolia testnet.</p>
+          <p className="text-sm text-slate-400 mb-6">Transactions are immutably written directly to the Ethereum blockchain.</p>
 
           <form onSubmit={handleDonate} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Cause / Purpose</label>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Campaign ID</label>
                 <input 
                   type="text" 
-                  value={purpose} 
-                  onChange={(e) => setPurpose(e.target.value)} 
-                  placeholder="e.g., Medical Relief, Tech Education"
+                  value={campaignId} 
+                  onChange={(e) => setCampaignId(e.target.value)} 
+                  placeholder="e.g., flood-relief-2026"
                   required 
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
                 />
@@ -197,7 +202,7 @@ export default function DonorDashboard() {
           </form>
         </section>
 
-        {/* Live Transparency Leaderboard Table */}
+        {/* Live Transparency Feed Table */}
         <section className="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-6 md:p-8 shadow-xl overflow-hidden">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -217,7 +222,7 @@ export default function DonorDashboard() {
               <thead>
                 <tr className="border-b border-slate-700/80 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/40">
                   <th className="py-3 px-4">Donor Address</th>
-                  <th className="py-3 px-4">Purpose</th>
+                  <th className="py-3 px-4">Campaign ID</th>
                   <th className="py-3 px-4">Amount</th>
                   <th className="py-3 px-4 text-right">Timestamp</th>
                 </tr>
@@ -236,7 +241,7 @@ export default function DonorDashboard() {
                         {item.donor.substring(0, 6)}...{item.donor.substring(38)}
                       </td>
                       <td className="py-3.5 px-4 text-slate-200 font-medium">
-                        {item.purpose}
+                        {item.campaignId}
                       </td>
                       <td className="py-3.5 px-4 font-bold text-emerald-400">
                         {item.amount} ETH
