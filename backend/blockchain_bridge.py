@@ -90,6 +90,20 @@ class CampaignStats:
     exists: bool
 
 
+@dataclass
+class Expense:
+    spender: str
+    amount_wei: int
+    amount_eth: float
+    campaign_id: str
+    description: str
+    receipt_url: str
+    timestamp: int
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
 # --------------------------------------------------------------------------
 # Bridge
 # --------------------------------------------------------------------------
@@ -205,12 +219,6 @@ class BlockchainBridge:
     def get_all_donations(self) -> list[Donation]:
         """
         Convenience method: calls getDonation(i) for every i in range(count).
-
-        NOTE: this is O(n) RPC calls, which is fine for hackathon/demo scale.
-        For real production scale, replace this with a query against an
-        off-chain SQLAlchemy table kept in sync by `sync_latest_events()`
-        below, so `/api/donations` reads from Postgres/SQLite instead of
-        hitting the chain on every request.
         """
         return [self.get_donation_by_index(i) for i in range(self.get_total_donations_count())]
 
@@ -218,6 +226,31 @@ class BlockchainBridge:
         """Returns getTotalRaisedForCampaign(campaign_id) converted to Ether."""
         wei = self.contract.functions.getTotalRaisedForCampaign(campaign_id).call()
         return float(Web3.from_wei(wei, "ether"))
+
+    def get_campaign_expenses(self, campaign_id: str) -> list[Expense]:
+        """Fetches all transparency expenses logged for a specific campaign."""
+        try:
+            # Get all expense IDs for this campaign
+            expense_ids = self.contract.functions.getCampaignExpenseIds(campaign_id).call()
+            expenses_list = []
+            
+            # Fetch individual expense details
+            for exp_id in expense_ids:
+                expense = self.contract.functions.getExpense(exp_id).call()
+                expenses_list.append(Expense(
+                    spender=expense[0],
+                    amount_wei=expense[1],
+                    amount_eth=float(self.w3.from_wei(expense[1], 'ether')),
+                    campaign_id=expense[2],
+                    description=expense[3],
+                    receipt_url=expense[4],
+                    timestamp=expense[5]
+                ))
+                
+            return expenses_list
+        except (ContractLogicError, BadFunctionCallOutput) as exc:
+            logger.error("getCampaignExpenseIds failed for %s: %s", campaign_id, exc)
+            raise
 
     # -------------------------------------------------------- campaign mgmt
 
@@ -227,17 +260,6 @@ class BlockchainBridge:
         frontend can be told "unknown campaign" *before* a user signs and
         pays gas for a `recordDonation` transaction that would otherwise
         revert against an unregistered campaign.
-
-        The contract doesn't expose a direct `campaignExists(id)` getter, so
-        this is derived by scanning historical `CampaignRegistered` events
-        for a matching indexed `campaignHash` (keccak256 of the campaignId
-        string -- this is how Solidity indexes a dynamic `string` event
-        param under the hood).
-
-        Results are cached in-memory per bridge instance, since a registered
-        campaign never becomes unregistered. For a multi-worker deployment,
-        back this cache with a SQLAlchemy table populated by
-        `sync_latest_events()` instead of a plain in-process dict.
         """
         if use_cache and campaign_id in self._campaign_cache:
             return self._campaign_cache[campaign_id]
@@ -269,19 +291,6 @@ class BlockchainBridge:
         """
         Polls for `DonationRecorded` events between `from_block` and
         `to_block`, returning them as typed `Donation` objects.
-
-        Call this on a schedule (APScheduler job, Celery beat task, or a
-        simple `asyncio` background loop started from main.py's lifespan)
-        to keep an off-chain mirror table fresh, e.g.:
-
-            donations = bridge.sync_latest_events(from_block=last_synced_block)
-            for d in donations:
-                upsert_donation_row(session, d)   # your SQLAlchemy model
-            last_synced_block = bridge.last_synced_block
-
-        Today this only fetches + returns + logs the events; it deliberately
-        has no hard dependency on an ORM model so you can wire in whichever
-        SQLAlchemy schema you land on without touching this file again.
         """
         if from_block is None:
             from_block = max(0, self.w3.eth.block_number - EVENT_POLL_BLOCK_RANGE)
@@ -333,25 +342,3 @@ def get_bridge() -> BlockchainBridge:
     if _bridge_instance is None:
         _bridge_instance = BlockchainBridge()
     return _bridge_instance
-def get_campaign_expenses(campaign_id: str):
-    """Fetches all transparency expenses logged for a specific campaign."""
-    try:
-        # Get all expense IDs for this campaign
-        expense_ids = contract.functions.getCampaignExpenseIds(campaign_id).call()
-        expenses_list = []
-        
-        # Fetch individual expense details
-        for exp_id in expense_ids:
-            expense = contract.functions.getExpense(exp_id).call()
-            expenses_list.append({
-                "spender": expense[0],
-                "amount_eth": w3.from_wei(expense[1], 'ether'),
-                "campaignId": expense[2],
-                "description": expense[3],
-                "receiptUrl": expense[4],
-                "timestamp": expense[5]
-            })
-            
-        return {"status": "success", "data": expenses_list}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
