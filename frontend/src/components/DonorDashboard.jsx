@@ -1,12 +1,21 @@
-// src/components/DonorDashboard.jsx
+// frontend/src/components/DonorDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../contractConfig';
 
 export default function DonorDashboard() {
   const [account, setAccount] = useState(null);
+  
+  // Donation Form States
+  const [selectedCampaign, setSelectedCampaign] = useState('');
   const [amount, setAmount] = useState('');
-  const [campaignId, setCampaignId] = useState(''); // Updated from purpose -> campaignId
+  
+  // Campaign Registration States
+  const [newCampaignId, setNewCampaignId] = useState('');
+  const [newBeneficiary, setNewBeneficiary] = useState('');
+
+  // On-Chain Data States
+  const [campaigns, setCampaigns] = useState([]);
   const [donationsList, setDonationsList] = useState([]);
   const [totalEth, setTotalEth] = useState('0');
   const [loading, setLoading] = useState(false);
@@ -27,73 +36,122 @@ export default function DonorDashboard() {
     }
   };
 
-  // 2. Fetch All Donations from Contract (Updated for DonationTracker.sol)
-  const fetchDonations = async () => {
+  // 2. Fetch Campaigns and Recent Donations
+  const fetchData = async () => {
     if (!window.ethereum) return;
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 
-      // Matches getDonationsCount() and totalAmountRaised()
-      const count = await contract.getDonationsCount();
+      // Fetch Total Raised Across All Campaigns
       const rawTotal = await contract.totalAmountRaised();
       setTotalEth(ethers.formatEther(rawTotal));
 
-      const items = [];
-      for (let i = 0; i < Number(count); i++) {
-        // Matches getDonation(uint256 _index) view function
-        const item = await contract.getDonation(i);
-        items.push({
+      // Fetch Registered Campaigns
+      const campaignCount = await contract.getRegisteredCampaignsCount();
+      const loadedCampaigns = [];
+      for (let i = 0; i < Number(campaignCount); i++) {
+        const id = await contract.getRegisteredCampaignIdAt(i);
+        const beneficiary = await contract.getCampaignBeneficiary(id);
+        const raisedWei = await contract.getTotalRaisedForCampaign(id);
+        loadedCampaigns.push({
+          id,
+          beneficiary,
+          raisedEth: ethers.formatEther(raisedWei)
+        });
+      }
+      setCampaigns(loadedCampaigns);
+      if (loadedCampaigns.length > 0 && !selectedCampaign) {
+        setSelectedCampaign(loadedCampaigns[0].id);
+      }
+
+      // Fetch Recent Donations using getDonationsPage
+      const totalDonations = await contract.getDonationsCount();
+      const totalCount = Number(totalDonations);
+      if (totalCount > 0) {
+        const pageSize = Math.min(totalCount, 50); // Get last 50 entries
+        const startIndex = totalCount > pageSize ? totalCount - pageSize : 0;
+        const rawPage = await contract.getDonationsPage(startIndex, pageSize);
+        
+        const formatted = rawPage.map((item) => ({
           donor: item.donor,
           amount: ethers.formatEther(item.amount),
           campaignId: item.campaignId,
           timestamp: new Date(Number(item.timestamp) * 1000).toLocaleString()
-        });
+        })).reverse(); // Newest first
+
+        setDonationsList(formatted);
       }
-      setDonationsList(items.reverse());
     } catch (err) {
-      console.error("Error fetching donations:", err);
+      console.error("Error loading contract data:", err);
     }
   };
 
-  // 3. Send Donation Transaction
-  const handleDonate = async (e) => {
+  // 3. Register a New Campaign
+  const handleRegisterCampaign = async (e) => {
     e.preventDefault();
-    if (!amount || !campaignId) return;
+    if (!newCampaignId || !newBeneficiary) return;
     try {
       setLoading(true);
-      setStatusMessage("Preparing transaction...");
+      setStatusMessage("Registering campaign on-chain...");
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      const tx = await contract.registerCampaign(newCampaignId, newBeneficiary);
+      await tx.wait();
+
+      setStatusMessage(`Campaign "${newCampaignId}" registered successfully!`);
+      setNewCampaignId('');
+      setNewBeneficiary('');
+      await fetchData();
+    } catch (err) {
+      console.error("Campaign registration failed:", err);
+      setStatusMessage("Failed to register campaign.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 4. Record a Donation
+  const handleDonate = async (e) => {
+    e.preventDefault();
+    if (!amount || !selectedCampaign) return;
+    try {
+      setLoading(true);
+      setStatusMessage("Preparing donation transaction...");
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
       const amountInWei = ethers.parseEther(amount);
+      if (amountInWei < 1000n) {
+        alert("Minimum donation amount is 1000 wei.");
+        setLoading(false);
+        return;
+      }
 
-      setStatusMessage("Please confirm transaction in MetaMask...");
-      
-      // Calls recordDonation(string campaignId)
-      const tx = await contract.recordDonation(campaignId, { value: amountInWei });
+      setStatusMessage("Confirm transaction in MetaMask...");
+      const tx = await contract.recordDonation(selectedCampaign, { value: amountInWei });
 
-      setStatusMessage("Transaction submitted! Waiting for confirmation...");
+      setStatusMessage("Forwarding funds to beneficiary on Sepolia...");
       await tx.wait();
 
-      setStatusMessage("Donation recorded successfully!");
+      setStatusMessage("Donation recorded and funds directly forwarded!");
       setAmount('');
-      setCampaignId('');
-      
-      await fetchDonations();
+      await fetchData();
     } catch (err) {
       console.error("Donation failed:", err);
-      // Helpful error message if campaign isn't registered yet
-      setStatusMessage("Transaction failed. Ensure campaign is registered first!");
+      setStatusMessage("Transaction failed or was reverted.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDonations();
+    fetchData();
   }, []);
 
   return (
@@ -106,7 +164,7 @@ export default function DonorDashboard() {
             <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
               Smackathon 2k26
             </h1>
-            <p className="text-xs md:text-sm text-slate-400">Transparent Blockchain Donation Tracker</p>
+            <p className="text-xs md:text-sm text-slate-400">Non-Custodial Transparent Donation Tracker</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -132,7 +190,7 @@ export default function DonorDashboard() {
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-6 bg-gradient-to-br from-indigo-900/40 to-slate-800/80 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg flex justify-between items-center">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-indigo-300">Total Funds Raised</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-indigo-300">Total Funds Raised Across Campaigns</p>
               <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-1">{totalEth} <span className="text-lg font-medium text-indigo-400">ETH</span></h2>
             </div>
             <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-xl font-bold">
@@ -142,32 +200,81 @@ export default function DonorDashboard() {
 
           <div className="p-6 bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl shadow-lg flex justify-between items-center">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Transactions</p>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-1">{donationsList.length}</h2>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Registered Campaigns</p>
+              <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-1">{campaigns.length}</h2>
             </div>
             <div className="w-12 h-12 rounded-xl bg-slate-700/40 border border-slate-600 flex items-center justify-center text-slate-300">
-              ⚡
+              🎯
             </div>
           </div>
         </section>
 
-        {/* Donation Action Form */}
-        <section className="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-6 md:p-8 shadow-xl">
-          <h2 className="text-xl font-bold text-slate-100 mb-1">Make an On-Chain Donation</h2>
-          <p className="text-sm text-slate-400 mb-6">Transactions are immutably written directly to the Ethereum blockchain.</p>
+        {/* Action Panel: Register Campaign & Make Donation */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          
+          {/* Register Campaign */}
+          <section className="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-slate-100 mb-1">Register New Campaign</h2>
+            <p className="text-xs text-slate-400 mb-4">Set an immutable campaign identifier and target beneficiary address.</p>
 
-          <form onSubmit={handleDonate} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleRegisterCampaign} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Campaign ID</label>
                 <input 
                   type="text" 
-                  value={campaignId} 
-                  onChange={(e) => setCampaignId(e.target.value)} 
-                  placeholder="e.g., flood-relief-2026"
+                  value={newCampaignId} 
+                  onChange={(e) => setNewCampaignId(e.target.value)} 
+                  placeholder="e.g. flood-relief-2026"
                   required 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Beneficiary Address</label>
+                <input 
+                  type="text" 
+                  value={newBeneficiary} 
+                  onChange={(e) => setNewBeneficiary(e.target.value)} 
+                  placeholder="0x..."
+                  required 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={loading || !account} 
+                className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white font-semibold text-sm rounded-xl transition-all"
+              >
+                Register Campaign
+              </button>
+            </form>
+          </section>
+
+          {/* Send Donation */}
+          <section className="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-slate-100 mb-1">Direct On-Chain Donation</h2>
+            <p className="text-xs text-slate-400 mb-4">Funds route immediately to the registered beneficiary in the same block.</p>
+
+            <form onSubmit={handleDonate} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Select Campaign</label>
+                <select 
+                  value={selectedCampaign} 
+                  onChange={(e) => setSelectedCampaign(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                >
+                  {campaigns.length === 0 ? (
+                    <option value="">No Campaigns Registered</option>
+                  ) : (
+                    campaigns.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.id} ({c.raisedEth} ETH Raised)
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
 
               <div>
@@ -179,41 +286,40 @@ export default function DonorDashboard() {
                   onChange={(e) => setAmount(e.target.value)} 
                   placeholder="0.01"
                   required 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
               </div>
-            </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
               <button 
                 type="submit" 
-                disabled={loading || !account} 
-                className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+                disabled={loading || !account || campaigns.length === 0} 
+                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-indigo-600/20"
               >
-                {loading ? "Processing Block..." : "Confirm & Send ETH"}
+                {loading ? "Processing..." : "Donate Now"}
               </button>
+            </form>
+          </section>
 
-              {statusMessage && (
-                <span className="text-xs font-medium text-indigo-300 bg-indigo-950/60 border border-indigo-800/60 px-3 py-2 rounded-lg text-center w-full sm:w-auto">
-                  {statusMessage}
-                </span>
-              )}
-            </div>
-          </form>
-        </section>
+        </div>
 
-        {/* Live Transparency Feed Table */}
+        {statusMessage && (
+          <div className="text-center p-3 text-xs font-medium text-indigo-300 bg-indigo-950/60 border border-indigo-800/60 rounded-xl">
+            {statusMessage}
+          </div>
+        )}
+
+        {/* Live Transparency Feed */}
         <section className="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-6 md:p-8 shadow-xl overflow-hidden">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-xl font-bold text-slate-100">Public Transparency Feed</h2>
-              <p className="text-sm text-slate-400">Live ledger records directly from smart contract memory.</p>
+              <h2 className="text-xl font-bold text-slate-100">Immutable Ledger Feed</h2>
+              <p className="text-sm text-slate-400">Live records from contract memory using paginated reads.</p>
             </div>
             <button 
-              onClick={fetchDonations} 
+              onClick={fetchData} 
               className="px-3 py-1.5 text-xs font-medium bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"
             >
-              Refresh Feed
+              Refresh
             </button>
           </div>
 
@@ -231,7 +337,7 @@ export default function DonorDashboard() {
                 {donationsList.length === 0 ? (
                   <tr>
                     <td colSpan="4" className="py-8 text-center text-slate-500 italic">
-                      No on-chain donations found. Be the first to donate!
+                      No on-chain donations found.
                     </td>
                   </tr>
                 ) : (
