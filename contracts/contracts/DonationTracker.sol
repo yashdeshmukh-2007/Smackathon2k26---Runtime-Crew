@@ -371,4 +371,71 @@ contract DonationTracker {
     function computeCampaignHash(string calldata _campaignId) external pure returns (bytes32 campaignHash) {
         return keccak256(bytes(_campaignId));
     }
+// Add to Types section:
+    struct Expense {
+        address spender;     // Beneficiary who logged the expense
+        uint256 amount;      // Amount spent in wei
+        string campaignId;   // Associated campaign
+        string description;  // What it was spent on
+        string receiptUrl;   // IPFS URL for proof
+        uint256 timestamp;
+    }
+
+    // Add to Mutable Storage section:
+    Expense[] private expenses;
+    mapping(bytes32 => uint256[]) private expenseIdsByCampaign;
+
+    // Add to Events section:
+    event ExpenseLogged(
+        bytes32 indexed campaignHash,
+        address indexed spender,
+        uint256 amount,
+        string description,
+        string receiptUrl,
+        uint256 timestamp,
+        uint256 expenseId
+    );
+
+    // Add to Custom Errors section:
+    error UnauthorizedSpender(address caller, address requiredBeneficiary);
+
+    // Add to Core Functions section:
+    function logExpense(
+        string calldata _campaignId,
+        uint256 _amount,
+        string calldata _description,
+        string calldata _receiptUrl
+    ) external {
+        bytes32 campaignHash = keccak256(bytes(_campaignId));
+        
+        if (!isCampaignRegistered[campaignHash]) revert CampaignNotRegistered(_campaignId);
+        if (msg.sender != campaignBeneficiary[campaignHash]) {
+            revert UnauthorizedSpender(msg.sender, campaignBeneficiary[campaignHash]);
+        }
+        if (_amount == 0) revert InsufficientAmount(_amount, 1);
+
+        uint256 expenseId = expenses.length;
+        expenses.push(Expense({
+            spender: msg.sender,
+            amount: _amount,
+            campaignId: _campaignId,
+            description: _description,
+            receiptUrl: _receiptUrl,
+            timestamp: block.timestamp
+        }));
+
+        expenseIdsByCampaign[campaignHash].push(expenseId);
+
+        emit ExpenseLogged(campaignHash, msg.sender, _amount, _description, _receiptUrl, block.timestamp, expenseId);
+    }
+
+    // Add to View/Read functions section:
+    function getExpense(uint256 _index) external view returns (Expense memory) {
+        if (_index >= expenses.length) revert IndexOutOfBounds(_index, expenses.length);
+        return expenses[_index];
+    }
+
+    function getCampaignExpenseIds(string calldata _campaignId) external view returns (uint256[] memory) {
+        return expenseIdsByCampaign[keccak256(bytes(_campaignId))];
+    }
 }
