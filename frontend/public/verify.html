@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Verify · Transparent Donation Tracking</title>
+
+<!-- ==========================================================
+     Ethers.js v6 — used to talk to Sepolia directly, no backend
+     ========================================================== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+
+<style>
+  /* ----------------------------------------------------------
+     Design tokens
+     A ledger, not a landing page. The signature idea: every
+     result renders as a stamped on-chain "receipt" — a monospace
+     record with tick marks down the left edge, like a printed
+     audit slip torn from a machine. Slate/navy background,
+     cyan for verified truth, amber-red for absence of a record
+     (never a scary red — this is a query tool, not an alarm).
+     ---------------------------------------------------------- */
+  :root {
+    --bg-void:        #0a0e14;
+    --bg-panel:       #101722;
+    --bg-panel-raised:#141d2b;
+    --line:           #212d3d;
+    --line-soft:      #1a2432;
+    --ink:            #dde6f0;
+    --ink-dim:        #7c8ba1;
+    --ink-faint:      #4b5a70;
+    --cyan:           #4fd8e0;
+    --cyan-dim:       #2a7a80;
+    --amber:          #e0a24f;
+    --amber-dim:      #8a6329;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-void);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(79, 216, 224, 0.07), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 56px 20px 80px;
+  }
+
+  /* ---------------------------------------------------------- Header */
+  .masthead {
+    width: 100%;
+    max-width: 620px;
+    margin-bottom: 36px;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--cyan-dim);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .eyebrow::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+    color: #f2f6fa;
+  }
+
+  .sub {
+    color: var(--ink-dim);
+    font-size: 14.5px;
+    line-height: 1.6;
+    max-width: 52ch;
+  }
+
+  .sub code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--bg-panel-raised);
+    border: 1px solid var(--line);
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--cyan);
+  }
+
+  /* ---------------------------------------------------------- Query card */
+  .card {
+    width: 100%;
+    max-width: 620px;
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px;
+    margin-bottom: 20px;
+  }
+
+  .field-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .field-wrap {
+    flex: 1;
+    position: relative;
+  }
+
+  .field-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: block;
+    margin-bottom: 7px;
+  }
+
+  input#campaignId {
+    width: 100%;
+    background: var(--bg-void);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  input#campaignId::placeholder { color: var(--ink-faint); }
+
+  input#campaignId:focus {
+    border-color: var(--cyan-dim);
+    box-shadow: 0 0 0 3px rgba(79, 216, 224, 0.1);
+  }
+
+  button#verifyBtn {
+    align-self: flex-end;
+    background: var(--cyan);
+    color: #06171a;
+    border: none;
+    border-radius: 6px;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 13.5px;
+    padding: 0 20px;
+    height: 44px;
+    margin-top: 21px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, transform 0.08s ease;
+  }
+
+  button#verifyBtn:hover { background: #6ce2e8; }
+  button#verifyBtn:active { transform: translateY(1px); }
+
+  button#verifyBtn:disabled {
+    background: var(--line);
+    color: var(--ink-faint);
+    cursor: wait;
+  }
+
+  button#verifyBtn:focus-visible,
+  input#campaignId:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+  }
+
+  .rpc-note {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--line-soft);
+  }
+
+  .rpc-note span { color: var(--cyan-dim); }
+
+  /* ---------------------------------------------------------- Receipt (result) */
+  .receipt {
+    width: 100%;
+    max-width: 620px;
+    display: none;
+  }
+
+  .receipt.show { display: block; animation: rise 0.35s ease both; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .receipt-body {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* left-edge tick marks — the ledger motif */
+  .receipt-body::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: repeating-linear-gradient(
+      0deg, var(--tick-color, var(--ink-faint)) 0px, var(--tick-color, var(--ink-faint)) 4px,
+      transparent 4px, transparent 10px
+    );
+  }
+
+  .receipt-body.state-verified { --tick-color: var(--cyan); }
+  .receipt-body.state-unverified { --tick-color: var(--amber); }
+
+  .receipt-head {
+    padding: 20px 22px 18px 26px;
+    border-bottom: 1px solid var(--line-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .receipt-id {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-dim);
+    word-break: break-all;
+  }
+
+  .receipt-id b { color: var(--ink); font-weight: 600; }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+
+  .badge.ok {
+    background: rgba(79, 216, 224, 0.1);
+    color: var(--cyan);
+    border: 1px solid rgba(79, 216, 224, 0.25);
+  }
+  .badge.ok::before { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+
+  .badge.warn {
+    background: rgba(224, 162, 79, 0.1);
+    color: var(--amber);
+    border: 1px solid rgba(224, 162, 79, 0.25);
+  }
+  .badge.warn::before { background: var(--amber); }
+
+  .receipt-rows { padding: 4px 22px 4px 26px; }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .row:last-child { border-bottom: none; }
+
+  .row-label {
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    flex-shrink: 0;
+  }
+
+  .row-value {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    color: var(--ink);
+    text-align: right;
+    word-break: break-all;
+  }
+
+  .row-value.big {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--cyan);
+  }
+
+  .row-value a {
+    color: var(--cyan);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--cyan-dim);
+  }
+  .row-value a:hover { border-bottom-style: solid; }
+
+  .proof-strip {
+    margin: 4px 22px 20px 26px;
+    background: var(--bg-void);
+    border: 1px solid var(--line-soft);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--ink-faint);
+  }
+
+  .proof-strip .proof-title {
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 10px;
+    margin-bottom: 6px;
+  }
+
+  .proof-strip code { color: var(--cyan-dim); }
+
+  .warn-copy {
+    padding: 4px 22px 22px 26px;
+    font-size: 13px;
+    color: var(--ink-dim);
+    line-height: 1.6;
+  }
+
+  /* ---------------------------------------------------------- Status line */
+  .status-line {
+    width: 100%;
+    max-width: 620px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    min-height: 18px;
+    margin-top: 2px;
+    padding-left: 2px;
+  }
+
+  .status-line.err { color: #e07a5f; }
+
+  /* ---------------------------------------------------------- Footer */
+  footer {
+    width: 100%;
+    max-width: 620px;
+    margin-top: 40px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line-soft);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  @media (max-width: 520px) {
+    .field-row { flex-direction: column; }
+    button#verifyBtn { margin-top: 4px; width: 100%; height: 46px; }
+    .receipt-head { flex-direction: column; align-items: flex-start; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+
+<body>
+
+  <div class="masthead">
+    <div class="eyebrow">Sepolia · read-only · no wallet required</div>
+    <h1>Verify on-chain integrity</h1>
+    <p class="sub">
+      Query <code>DonationTracker.sol</code> directly. No backend, no MetaMask —
+      this page reads Sepolia through a public RPC and shows you exactly what
+      the contract stores for a given campaign.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="field-row">
+      <div class="field-wrap">
+        <label class="field-label" for="campaignId">Campaign ID</label>
+        <input
+          id="campaignId"
+          type="text"
+          placeholder="e.g. flood-relief-2026"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+      <button id="verifyBtn">Verify On-Chain Integrity</button>
+    </div>
+    <div class="rpc-note">
+      RPC: <span id="rpcUrlLabel"></span> &nbsp;·&nbsp; Contract:
+      <span id="contractAddrLabel"></span>
+    </div>
+  </div>
+
+  <div class="status-line" id="statusLine"></div>
+
+  <div class="receipt" id="receipt">
+    <div class="receipt-body" id="receiptBody">
+
+      <div class="receipt-head">
+        <div class="receipt-id">Campaign&nbsp;<b id="rCampaignId">—</b></div>
+        <div class="badge" id="rBadge"></div>
+      </div>
+
+      <!-- Verified state content -->
+      <div id="verifiedContent" style="display:none;">
+        <div class="receipt-rows">
+          <div class="row">
+            <div class="row-label">Beneficiary (locked)</div>
+            <div class="row-value" id="rBeneficiary">—</div>
+          </div>
+          <div class="row">
+            <div class="row-label">Total raised</div>
+            <div class="row-value big" id="rTotalRaised">—</div>
+          </div>
+          <div class="row">
+            <div class="row-label">Contract-wide donations</div>
+            <div class="row-value" id="rDonationCount">—</div>
+          </div>
+          <div class="row">
+            <div class="row-label">View on Etherscan</div>
+            <div class="row-value" id="rEtherscan">—</div>
+          </div>
+        </div>
+        <div class="proof-strip">
+          <div class="proof-title">Non-custodial proof</div>
+          Funds are forwarded to the beneficiary in the same transaction via
+          <code>.call{value: msg.value}("")</code> — the contract never holds
+          a balance. What you see above is read directly from chain state,
+          not from a database this project controls.
+        </div>
+      </div>
+
+      <!-- Unverified state content -->
+      <div id="unverifiedContent" style="display:none;">
+        <div class="warn-copy">
+          No registration found for this campaign ID on <code>DonationTracker.sol</code>.
+          Either it hasn't been registered yet, or the ID doesn't match exactly —
+          campaign IDs are case-sensitive strings.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <span>DonationTracker · Sepolia Testnet</span>
+    <span>Smackathon2k26 — Runtime Crew</span>
+  </footer>
+
+<script>
+/* ============================================================
+   CONFIG
+   Sync CONTRACT_ADDRESS with contractConfig.js when it's ready.
+   ============================================================ */
+const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000dEaD"; // ← replace with deployed address
+const RPC_URL           = "https://rpc.sepolia.org";
+const ETHERSCAN_BASE    = "https://sepolia.etherscan.io/address/";
+
+// Minimal read-only ABI — only the getters this page calls.
+const CONTRACT_ABI = [
+  "function getIsCampaignRegistered(string calldata _campaignId) view returns (bool)",
+  "function getCampaignBeneficiary(string calldata _campaignId) view returns (address)",
+  "function getTotalRaisedForCampaign(string calldata _campaignId) view returns (uint256)",
+  "function getDonationsCount() view returns (uint256)"
+];
+
+/* ============================================================
+   DOM refs
+   ============================================================ */
+const els = {
+  input:          document.getElementById("campaignId"),
+  btn:            document.getElementById("verifyBtn"),
+  status:         document.getElementById("statusLine"),
+  receipt:        document.getElementById("receipt"),
+  receiptBody:    document.getElementById("receiptBody"),
+  badge:          document.getElementById("rBadge"),
+  campaignIdOut:  document.getElementById("rCampaignId"),
+  verifiedBlock:  document.getElementById("verifiedContent"),
+  unverifiedBlock:document.getElementById("unverifiedContent"),
+  beneficiary:    document.getElementById("rBeneficiary"),
+  totalRaised:    document.getElementById("rTotalRaised"),
+  donationCount:  document.getElementById("rDonationCount"),
+  etherscanLink:  document.getElementById("rEtherscan"),
+  rpcUrlLabel:    document.getElementById("rpcUrlLabel"),
+  contractAddrLabel: document.getElementById("contractAddrLabel"),
+};
+
+// Label the config so judges can see exactly what this page is pointed at.
+els.rpcUrlLabel.textContent = RPC_URL;
+els.contractAddrLabel.textContent = shortenAddress(CONTRACT_ADDRESS);
+
+/* ============================================================
+   Provider — single shared JsonRpcProvider, no wallet needed
+   ============================================================ */
+const provider = new ethers.JsonRpcProvider(RPC_URL);
+const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+function shortenAddress(addr) {
+  if (!addr || addr.length < 10) return addr;
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+function setStatus(message, isError = false) {
+  els.status.textContent = message;
+  els.status.classList.toggle("err", isError);
+}
+
+function setLoading(isLoading) {
+  els.btn.disabled = isLoading;
+  els.btn.textContent = isLoading ? "Querying chain…" : "Verify On-Chain Integrity";
+}
+
+/* ============================================================
+   Core verification flow
+   ============================================================ */
+async function verifyCampaign() {
+  const campaignId = els.input.value.trim();
+
+  if (!campaignId) {
+    setStatus("Enter a campaign ID first.", true);
+    els.input.focus();
+    return;
+  }
+
+  els.receipt.classList.remove("show");
+  setLoading(true);
+  setStatus(`Reading DonationTracker.sol on Sepolia for "${campaignId}"…`);
+
+  try {
+    const isRegistered = await contract.getIsCampaignRegistered(campaignId);
+
+    if (!isRegistered) {
+      renderUnverified(campaignId);
+      setStatus("Query complete — no on-chain record for this ID.");
+      return;
+    }
+
+    // Registered: pull the rest of the campaign's on-chain state in parallel.
+    const [beneficiary, totalRaisedWei, donationCount] = await Promise.all([
+      contract.getCampaignBeneficiary(campaignId),
+      contract.getTotalRaisedForCampaign(campaignId),
+      contract.getDonationsCount(),
+    ]);
+
+    renderVerified({
+      campaignId,
+      beneficiary,
+      totalRaisedEth: ethers.formatEther(totalRaisedWei),
+      donationCount: donationCount.toString(),
+    });
+
+    setStatus("Query complete — record confirmed directly from chain state.");
+  } catch (err) {
+    console.error(err);
+    setStatus(
+      "Couldn't reach Sepolia RPC or read the contract. It may be rate-limited — try again in a moment.",
+      true
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
+function renderVerified({ campaignId, beneficiary, totalRaisedEth, donationCount }) {
+  els.receiptBody.className = "receipt-body state-verified";
+  els.campaignIdOut.textContent = campaignId;
+
+  els.badge.className = "badge ok";
+  els.badge.textContent = "Verified & Locked";
+
+  els.verifiedBlock.style.display = "block";
+  els.unverifiedBlock.style.display = "none";
+
+  els.beneficiary.textContent = beneficiary;
+  els.totalRaised.textContent = `${totalRaisedEth} ETH`;
+  els.donationCount.textContent = `${donationCount} total (contract-wide)`;
+
+  els.etherscanLink.innerHTML = `<a href="${ETHERSCAN_BASE}${CONTRACT_ADDRESS}" target="_blank" rel="noopener noreferrer">${shortenAddress(CONTRACT_ADDRESS)} ↗</a>`;
+
+  els.receipt.classList.add("show");
+}
+
+function renderUnverified(campaignId) {
+  els.receiptBody.className = "receipt-body state-unverified";
+  els.campaignIdOut.textContent = campaignId;
+
+  els.badge.className = "badge warn";
+  els.badge.textContent = "Not Registered";
+
+  els.verifiedBlock.style.display = "none";
+  els.unverifiedBlock.style.display = "block";
+
+  els.receipt.classList.add("show");
+}
+
+/* ============================================================
+   Wiring
+   ============================================================ */
+els.btn.addEventListener("click", verifyCampaign);
+els.input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") verifyCampaign();
+});
+</script>
+
+</body>
+</html>
