@@ -1,15 +1,15 @@
 // frontend/src/components/DonorDashboard.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../contractConfig';
 
 export default function DonorDashboard() {
   const [account, setAccount] = useState(null);
-  
+
   // Donation Form States
   const [selectedCampaign, setSelectedCampaign] = useState('');
   const [amount, setAmount] = useState('');
-  
+
   // Campaign Registration States
   const [newCampaignId, setNewCampaignId] = useState('');
   const [newBeneficiary, setNewBeneficiary] = useState('');
@@ -21,7 +21,16 @@ export default function DonorDashboard() {
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
-  // 1. Connect MetaMask Wallet
+  // Fallback Read Provider (Allows read-only access even without MetaMask)
+  const getReadProvider = () => {
+    if (window.ethereum) {
+      return new ethers.BrowserProvider(window.ethereum);
+    }
+    // Fallback to local RPC node if wallet extension is absent
+    return new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+  };
+
+  // 1. Connect Wallet
   const connectWallet = async () => {
     if (!window.ethereum) {
       alert("Please install MetaMask to interact with this platform.");
@@ -36,20 +45,20 @@ export default function DonorDashboard() {
     }
   };
 
-  // 2. Fetch Campaigns and Recent Donations
-  const fetchData = async () => {
-    if (!window.ethereum) return;
+  // 2. Fetch On-Chain Data
+  const fetchData = useCallback(async () => {
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = getReadProvider();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 
-      // Fetch Total Raised Across All Campaigns
+      // Fetch total funds raised
       const rawTotal = await contract.totalAmountRaised();
       setTotalEth(ethers.formatEther(rawTotal));
 
-      // Fetch Registered Campaigns
+      // Fetch registered campaigns
       const campaignCount = await contract.getRegisteredCampaignsCount();
       const loadedCampaigns = [];
+
       for (let i = 0; i < Number(campaignCount); i++) {
         const id = await contract.getRegisteredCampaignIdAt(i);
         const beneficiary = await contract.getCampaignBeneficiary(id);
@@ -60,19 +69,21 @@ export default function DonorDashboard() {
           raisedEth: ethers.formatEther(raisedWei)
         });
       }
+
       setCampaigns(loadedCampaigns);
       if (loadedCampaigns.length > 0 && !selectedCampaign) {
         setSelectedCampaign(loadedCampaigns[0].id);
       }
 
-      // Fetch Recent Donations using getDonationsPage
+      // Fetch paginated donation history
       const totalDonations = await contract.getDonationsCount();
       const totalCount = Number(totalDonations);
+
       if (totalCount > 0) {
-        const pageSize = Math.min(totalCount, 50); // Get last 50 entries
+        const pageSize = Math.min(totalCount, 50);
         const startIndex = totalCount > pageSize ? totalCount - pageSize : 0;
         const rawPage = await contract.getDonationsPage(startIndex, pageSize);
-        
+
         const formatted = rawPage.map((item) => ({
           donor: item.donor,
           amount: ethers.formatEther(item.amount),
@@ -85,12 +96,18 @@ export default function DonorDashboard() {
     } catch (err) {
       console.error("Error loading contract data:", err);
     }
-  };
+  }, [selectedCampaign]);
 
   // 3. Register a New Campaign
   const handleRegisterCampaign = async (e) => {
     e.preventDefault();
     if (!newCampaignId || !newBeneficiary) return;
+
+    if (!window.ethereum) {
+      alert("MetaMask is required to send transactions.");
+      return;
+    }
+
     try {
       setLoading(true);
       setStatusMessage("Registering campaign on-chain...");
@@ -108,7 +125,7 @@ export default function DonorDashboard() {
       await fetchData();
     } catch (err) {
       console.error("Campaign registration failed:", err);
-      setStatusMessage("Failed to register campaign.");
+      setStatusMessage(`Failed: ${err.reason || err.message || "Transaction reverted"}`);
     } finally {
       setLoading(false);
     }
@@ -118,6 +135,12 @@ export default function DonorDashboard() {
   const handleDonate = async (e) => {
     e.preventDefault();
     if (!amount || !selectedCampaign) return;
+
+    if (!window.ethereum) {
+      alert("MetaMask is required to send transactions.");
+      return;
+    }
+
     try {
       setLoading(true);
       setStatusMessage("Preparing donation transaction...");
@@ -136,7 +159,7 @@ export default function DonorDashboard() {
       setStatusMessage("Confirm transaction in MetaMask...");
       const tx = await contract.recordDonation(selectedCampaign, { value: amountInWei });
 
-      setStatusMessage("Forwarding funds to beneficiary on Sepolia...");
+      setStatusMessage("Forwarding funds on-chain...");
       await tx.wait();
 
       setStatusMessage("Donation recorded and funds directly forwarded!");
@@ -144,7 +167,7 @@ export default function DonorDashboard() {
       await fetchData();
     } catch (err) {
       console.error("Donation failed:", err);
-      setStatusMessage("Transaction failed or was reverted.");
+      setStatusMessage(`Failed: ${err.reason || err.message || "Transaction reverted"}`);
     } finally {
       setLoading(false);
     }
@@ -152,13 +175,13 @@ export default function DonorDashboard() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8 font-sans">
       <div className="max-w-5xl mx-auto space-y-8">
-        
-        {/* Header Navigation */}
+
+        {/* Header */}
         <header className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-slate-800/80 backdrop-blur-md rounded-2xl border border-slate-700/60 shadow-xl">
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
@@ -186,7 +209,7 @@ export default function DonorDashboard() {
           </div>
         </header>
 
-        {/* Hero Metrics Row */}
+        {/* Hero Metrics */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="p-6 bg-gradient-to-br from-indigo-900/40 to-slate-800/80 backdrop-blur-md border border-indigo-500/20 rounded-2xl shadow-lg flex justify-between items-center">
             <div>
@@ -209,10 +232,10 @@ export default function DonorDashboard() {
           </div>
         </section>
 
-        {/* Action Panel: Register Campaign & Make Donation */}
+        {/* Actions Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           
-          {/* Register Campaign */}
+          {/* Register Campaign Form */}
           <section className="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-6 shadow-xl">
             <h2 className="text-xl font-bold text-slate-100 mb-1">Register New Campaign</h2>
             <p className="text-xs text-slate-400 mb-4">Set an immutable campaign identifier and target beneficiary address.</p>
@@ -245,14 +268,14 @@ export default function DonorDashboard() {
               <button 
                 type="submit" 
                 disabled={loading || !account} 
-                className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white font-semibold text-sm rounded-xl transition-all"
+                className="w-full py-2.5 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-500 text-white font-semibold text-sm rounded-xl transition-all"
               >
-                Register Campaign
+                {loading ? "Processing..." : account ? "Register Campaign" : "Connect Wallet First"}
               </button>
             </form>
           </section>
 
-          {/* Send Donation */}
+          {/* Send Donation Form */}
           <section className="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-6 shadow-xl">
             <h2 className="text-xl font-bold text-slate-100 mb-1">Direct On-Chain Donation</h2>
             <p className="text-xs text-slate-400 mb-4">Funds route immediately to the registered beneficiary in the same block.</p>
@@ -293,9 +316,9 @@ export default function DonorDashboard() {
               <button 
                 type="submit" 
                 disabled={loading || !account || campaigns.length === 0} 
-                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-indigo-600/20"
+                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-indigo-600/20"
               >
-                {loading ? "Processing..." : "Donate Now"}
+                {loading ? "Processing..." : account ? "Donate Now" : "Connect Wallet First"}
               </button>
             </form>
           </section>
@@ -308,7 +331,7 @@ export default function DonorDashboard() {
           </div>
         )}
 
-        {/* Live Transparency Feed */}
+        {/* Live Ledger Table */}
         <section className="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-6 md:p-8 shadow-xl overflow-hidden">
           <div className="flex items-center justify-between mb-6">
             <div>

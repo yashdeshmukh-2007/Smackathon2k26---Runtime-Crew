@@ -230,17 +230,15 @@ class BlockchainBridge:
     def get_campaign_expenses(self, campaign_id: str) -> list[Expense]:
         """Fetches all transparency expenses logged for a specific campaign."""
         try:
-            # Get all expense IDs for this campaign
             expense_ids = self.contract.functions.getCampaignExpenseIds(campaign_id).call()
             expenses_list = []
             
-            # Fetch individual expense details
             for exp_id in expense_ids:
                 expense = self.contract.functions.getExpense(exp_id).call()
                 expenses_list.append(Expense(
                     spender=expense[0],
                     amount_wei=expense[1],
-                    amount_eth=float(self.w3.from_wei(expense[1], 'ether')),
+                    amount_eth=float(Web3.from_wei(expense[1], 'ether')),
                     campaign_id=expense[2],
                     description=expense[3],
                     receipt_url=expense[4],

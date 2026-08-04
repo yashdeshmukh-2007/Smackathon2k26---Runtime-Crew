@@ -1,15 +1,13 @@
-const hre = require("hardhat");
+import hre from "hardhat";
 
 async function main() {
   console.log("Deploying DonationTracker contract...");
 
-  // Get the contract factory for DonationTracker
-  const DonationTracker = await hre.ethers.getContractFactory("DonationTracker");
+  // Use getOrCreate() to fetch/create the active network connection in Hardhat 3
+  const { ethers } = await hre.network.getOrCreate();
 
-  // Deploy the contract
+  const DonationTracker = await ethers.getContractFactory("DonationTracker");
   const donationTracker = await DonationTracker.deploy();
-
-  // Wait for the deployment to finish
   await donationTracker.waitForDeployment();
 
   const contractAddress = await donationTracker.getAddress();
