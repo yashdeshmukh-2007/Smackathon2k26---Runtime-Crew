@@ -1,11 +1,35 @@
-# Virtual environment
+# Python / FastAPI
 venv/
 env/
+ENV/
 __pycache__/
+*.pyc
 
-# Environment variables (Private keys, RPC URLs)
+# Environment Variables (Secrets & RPC Keys)
 .env
+*.env
+!.env.example
 
-# Editor files
+# Node.js & Dependency Folders
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Hardhat / Solidity Build Outputs
+contracts/artifacts/
+contracts/cache/
+artifacts/
+cache/
+
+# Frontend / Vite Build Outputs
+frontend/dist/
+frontend/build/
+dist/
+build/
+
+# Editor & System Files
 .vscode/
+.idea/
 .DS_Store
+*.swp
