@@ -1,157 +1,136 @@
-// frontend/src/components/OrganizerPortal.jsx
 import React, { useState } from 'react';
-import { ethers } from 'ethers';
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../contractConfig';
 
-export default function OrganizerPortal() {
-  const [expense, setExpense] = useState({
-    campaignId: '',
-    amount: '',
+export default function OrganizerPortal({ onAddCampaign, onBackToHome }) {
+  const [formData, setFormData] = useState({
+    title: '',
+    category: 'Education & Tech',
+    goal: '',
+    address: '',
+    endDate: '',
     description: '',
-    receiptUrl: ''
+    bannerImage: '',
+    contactEmail: ''
   });
-  const [status, setStatus] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const handleInputChange = (e) => {
-    setExpense({ ...expense, [e.target.name]: e.target.value });
-  };
-
-  const submitExpense = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setStatus('Connecting to wallet...');
-
-    if (!window.ethereum) {
-      setStatus('Please install MetaMask to log expenses.');
-      return;
+    if (onAddCampaign) {
+      onAddCampaign({
+        ...formData,
+        organization: formData.category,
+        contractAddress: formData.address || '0x' + Math.random().toString(16).substr(2, 40)
+      });
     }
-
-    try {
-      setLoading(true);
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-      setStatus('Waiting for wallet approval...');
-
-      const amountInWei = ethers.parseEther(expense.amount);
-
-      // Call the non-custodial logExpense function
-      const tx = await contract.logExpense(
-        expense.campaignId,
-        amountInWei,
-        expense.description,
-        expense.receiptUrl
-      );
-
-      setStatus('Transaction submitted. Waiting for blockchain confirmation...');
-      await tx.wait();
-
-      setStatus('Success! Expense permanently logged on the blockchain.');
-      setExpense({ campaignId: '', amount: '', description: '', receiptUrl: '' });
-    } catch (error) {
-      console.error(error);
-      if (error.message && error.message.includes("UnauthorizedSpender")) {
-        setStatus("Error: You are not the registered beneficiary for this campaign.");
-      } else {
-        setStatus(`Error: ${error.reason || error.message || "Transaction failed"}`);
-      }
-    } finally {
-      setLoading(false);
-    }
+    alert('Campaign registration submitted successfully!');
+    onBackToHome();
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8 font-sans flex items-center justify-center">
-      <div className="max-w-xl w-full bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-6 md:p-8 shadow-xl">
-        
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
-            Organizer Portal: Log Expense
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Submit transparency receipts directly to the blockchain. Only the registered beneficiary of a campaign can log expenses.
-          </p>
-        </div>
+    <div className="max-w-4xl mx-auto p-8">
+      <button 
+        onClick={onBackToHome}
+        className="mb-6 text-sm font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1"
+      >
+        ← Back to Home
+      </button>
 
-        <form onSubmit={submitExpense} className="space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+        <h2 className="text-2xl font-bold text-slate-900 mb-1">Create New Campaign</h2>
+        <p className="text-xs text-slate-500 mb-6">Fill in the parameters below to deploy your transparent campaign onto the registry.</p>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Campaign ID
-            </label>
-            <input
-              type="text"
-              name="campaignId"
-              value={expense.campaignId}
-              onChange={handleInputChange}
-              placeholder="e.g. flood-relief-2026"
+            <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Campaign Title</label>
+            <input 
+              type="text" 
               required
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              placeholder="e.g. PrepCircle Community STEM Workshop"
+              value={formData.title}
+              onChange={(e) => setFormData({...formData, title: e.target.value})}
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Amount Spent (ETH)
-            </label>
-            <input
-              type="number"
-              step="0.0001"
-              name="amount"
-              value={expense.amount}
-              onChange={handleInputChange}
-              placeholder="0.05"
-              required
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Category</label>
+              <select 
+                value={formData.category}
+                onChange={(e) => setFormData({...formData, category: e.target.value})}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option>Education & Tech</option>
+                <option>Medical Support</option>
+                <option>Disaster Relief</option>
+                <option>Environment</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Target Amount (ETH)</label>
+              <input 
+                type="text" 
+                required
+                placeholder="e.g. 5.0"
+                value={formData.goal}
+                onChange={(e) => setFormData({...formData, goal: e.target.value + ' ETH'})}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Recipient Wallet Address</label>
+              <input 
+                type="text" 
+                placeholder="0x..."
+                value={formData.address}
+                onChange={(e) => setFormData({...formData, address: e.target.value})}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Banner Image URL (Optional)</label>
+              <input 
+                type="url" 
+                placeholder="https://images.unsplash.com/..."
+                value={formData.bannerImage}
+                onChange={(e) => setFormData({...formData, bannerImage: e.target.value})}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Description
-            </label>
-            <input
-              type="text"
-              name="description"
-              value={expense.description}
-              onChange={handleInputChange}
-              placeholder="e.g. Purchased emergency medical supplies"
+            <label className="block text-xs font-semibold uppercase text-slate-500 mb-1">Description & Impact Goals</label>
+            <textarea 
+              rows="4"
               required
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              placeholder="Describe your initiative, milestones, and how funds will be deployed..."
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Receipt Proof (IPFS or Hash URL)
-            </label>
-            <input
-              type="text"
-              name="receiptUrl"
-              value={expense.receiptUrl}
-              onChange={handleInputChange}
-              placeholder="ipfs://Qm... or https://..."
-              required
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono text-xs"
-            />
+          <div className="flex justify-end gap-3 pt-4">
+            <button 
+              type="button" 
+              onClick={onBackToHome}
+              className="px-6 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit"
+              className="px-6 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
+            >
+              Register Campaign
+            </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-indigo-600/20"
-          >
-            {loading ? "Processing..." : "Log Expense On-Chain"}
-          </button>
         </form>
-
-        {status && (
-          <div className="mt-6 p-3 text-center text-xs font-medium text-indigo-300 bg-indigo-950/60 border border-indigo-800/60 rounded-xl break-words">
-            {status}
-          </div>
-        )}
-
       </div>
     </div>
   );

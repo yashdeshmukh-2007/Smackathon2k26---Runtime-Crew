@@ -1,104 +1,75 @@
 import React from 'react';
 
-export default function HomeSelection({ onSelectMode, sampleOrgs }) {
+export default function HomeSelection({ onSelectRole, onOpenAuth }) {
   return (
-    <div className="max-w-4xl mx-auto py-12 px-4 space-y-12 animate-in fade-in duration-300">
-      
-      {/* Hero Intro */}
-      <div className="text-center space-y-3">
-        <span className="px-3.5 py-1.5 rounded-full bg-[#EBEAE5] text-[#1D1D1F] text-xs font-semibold tracking-wide uppercase">
-          Smackathon 2k26
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between p-6 md:p-12 font-sans text-slate-800">
+      {/* Top Header / Branding */}
+      <header className="flex justify-between items-center max-w-6xl w-full mx-auto">
+        <div className="flex items-center space-x-2">
+          <span className="material-symbols-outlined text-teal-700 text-3xl">token</span>
+          <span className="font-display font-bold text-2xl tracking-tight text-slate-900">VeriFund </span>
+        </div>
+        <button
+          onClick={onOpenAuth}
+          className="px-5 py-2.5 rounded-full bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-colors shadow-sm"
+        >
+          Sign In / Connect Wallet
+        </button>
+      </header>
+
+      {/* Hero Content & Portal Selection */}
+      <main className="max-w-4xl w-full mx-auto my-12 text-center">
+        <span className="inline-block px-4 py-1.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold uppercase tracking-wider mb-6 border border-teal-100">
+          Decentralized Platform
         </span>
-        <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-[#1D1D1F]">
-          Transparent & Direct Giving
+        <h1 className="font-display text-4xl md:text-6xl font-normal text-slate-900 leading-tight mb-6">
+          Transparent, impactful engagement for modern communities.
         </h1>
-        <p className="text-sm md:text-base text-[#6E6E73] max-w-xl mx-auto">
-          Send funds securely on-chain or register your cause to start receiving transparent support instantly.
+        <p className="text-slate-600 text-lg md:text-xl max-w-2xl mx-auto mb-12">
+          Select your entry portal to access campaigns, explore initiatives, or manage organizer operations.
         </p>
-      </div>
 
-      {/* Two Choice Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Choice 1: Donate */}
-        <div 
-          onClick={() => onSelectMode('donate')}
-          className="apple-card rounded-3xl p-8 cursor-pointer hover:border-[#0066CC]/40 transition-all group relative overflow-hidden flex flex-col justify-between"
-        >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[#0066CC]/5 rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform"></div>
-          
-          <div>
-            <div className="w-14 h-14 rounded-2xl bg-[#0066CC]/10 text-[#0066CC] flex items-center justify-center text-2xl mb-6">
-              🤝
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+          {/* Donor / User Portal Card */}
+          <div 
+            onClick={() => onSelectRole('donor')}
+            className="glass-card p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:-translate-y-1"
+          >
+            <div className="w-12 h-12 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center mb-6 group-hover:bg-teal-700 group-hover:text-white transition-colors">
+              <span className="material-symbols-outlined">explore</span>
             </div>
-            <h2 className="text-2xl font-bold text-[#1D1D1F] mb-2">Want to Donate?</h2>
-            <p className="text-sm text-[#6E6E73] leading-relaxed mb-6">
-              Browse pre-enlisted trusted organizations or support your favorite causes with secure, direct ETH transactions.
+            <h3 className="font-display text-2xl font-semibold text-slate-900 mb-2">Explorer & Donor Portal</h3>
+            <p className="text-slate-600 text-sm leading-relaxed mb-6">
+              Discover verified campaigns, make trackable contributions, and monitor real-time metrics and personal history.
             </p>
+            <span className="inline-flex items-center text-teal-700 font-medium text-sm group-hover:underline">
+              Enter Explorer Dashboard <span className="material-symbols-outlined text-sm ml-1">arrow_forward</span>
+            </span>
           </div>
 
-          <button className="w-full py-3 apple-button apple-click font-semibold text-sm flex items-center justify-center gap-2">
-            Start Donating <span className="text-lg">→</span>
-          </button>
-        </div>
-
-        {/* Choice 2: Enlist / Register */}
-        <div 
-          onClick={() => onSelectMode('enlist')}
-          className="apple-card rounded-3xl p-8 cursor-pointer hover:border-[#1D1D1F]/40 transition-all group relative overflow-hidden flex flex-col justify-between"
-        >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[#EBEAE5] rounded-bl-full pointer-events-none group-hover:scale-110 transition-transform"></div>
-          
-          <div>
-            <div className="w-14 h-14 rounded-2xl bg-[#EBEAE5] text-[#1D1D1F] flex items-center justify-center text-2xl mb-6">
-              🎯
+          {/* Organizer / NGO Portal Card */}
+          <div 
+            onClick={() => onSelectRole('organizer')}
+            className="glass-card p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:-translate-y-1"
+          >
+            <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center mb-6 group-hover:bg-slate-900 group-hover:text-white transition-colors">
+              <span className="material-symbols-outlined">campaign</span>
             </div>
-            <h2 className="text-2xl font-bold text-[#1D1D1F] mb-2">Enlist Your Cause</h2>
-            <p className="text-sm text-[#6E6E73] leading-relaxed mb-6">
-              Register your organization on-chain with a custom campaign identifier and receive transparent funding directly.
+            <h3 className="font-display text-2xl font-semibold text-slate-900 mb-2">Organizer Portal</h3>
+            <p className="text-slate-600 text-sm leading-relaxed mb-6">
+              Create new campaigns, manage registration parameters, track target goals, and update contributors.
             </p>
+            <span className="inline-flex items-center text-slate-900 font-medium text-sm group-hover:underline">
+              Launch Campaign Manager <span className="material-symbols-outlined text-sm ml-1">arrow_forward</span>
+            </span>
           </div>
-
-          <button className="w-full py-3 bg-[#EBEAE5] text-[#1D1D1F] hover:bg-[#E2E1DC] rounded-full font-semibold text-sm apple-click flex items-center justify-center gap-2">
-            Register Campaign <span className="text-lg">→</span>
-          </button>
         </div>
+      </main>
 
-      </div>
-
-      {/* Pre-Enlisted Sample Organizations Section */}
-      <div className="apple-card rounded-3xl p-6 md:p-8 space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <div>
-            <h3 className="text-xl font-bold text-[#1D1D1F]">Featured Active Organizations</h3>
-            <p className="text-xs text-[#6E6E73]">Already enlisted and receiving live support on the network.</p>
-          </div>
-          <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-            ● Live On-Chain
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {sampleOrgs.map((org, index) => (
-            <div key={index} className="p-4 rounded-2xl bg-[#FBFBFA] border border-[#E5E2D9] space-y-3 hover:shadow-sm transition-all">
-              <img 
-                src={org.image} 
-                alt={org.name} 
-                className="w-full h-32 object-cover rounded-xl"
-              />
-              <div>
-                <h4 className="font-bold text-sm text-[#1D1D1F]">{org.name}</h4>
-                <p className="text-xs text-[#6E6E73] mt-1 line-clamp-2">{org.desc}</p>
-              </div>
-              <div className="pt-2 border-t border-[#E5E2D9]/60 flex items-center justify-between text-xs font-semibold">
-                <span className="text-[#0066CC]">{org.raised} ETH Raised</span>
-                <span className="text-[#8E8E93] font-mono">{org.id}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
+      {/* Footer */}
+      <footer className="text-center text-xs text-slate-400 max-w-6xl w-full mx-auto">
+        &copy; {new Date().getFullYear()} PrepCircle. All rights reserved.
+      </footer>
     </div>
   );
 }
