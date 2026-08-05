@@ -1,6 +1,14 @@
 {
+  "name": "smackathon-2k26",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev:all": "concurrently \"npx contracts hardhat node\" \"npm --prefix frontend run dev\""
+  },
   "devDependencies": {
     "@types/node": "^26.1.2",
+    "concurrently": "^10.0.4",
     "ts-node": "^10.9.2",
     "typescript": "^7.0.2"
   }
