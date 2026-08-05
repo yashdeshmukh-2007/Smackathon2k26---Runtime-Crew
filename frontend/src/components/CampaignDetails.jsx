@@ -3,6 +3,12 @@ import React, { useState } from 'react';
 export default function CampaignDetails({ campaign, user, onContribute, onBack, onOpenAuth }) {
   const [donationAmount, setDonationAmount] = useState('');
 
+  if (!campaign) return null;
+
+  const numericRaised = parseFloat(campaign.raised?.replace(/[^0-9.]/g, '')) || 0;
+  const numericGoal = parseFloat(campaign.goal?.replace(/[^0-9.]/g, '')) || 1;
+  const percentage = Math.min(Math.round((numericRaised / numericGoal) * 100), 100);
+
   const handleDonateSubmit = (e) => {
     e.preventDefault();
     if (!user) {
@@ -32,11 +38,10 @@ export default function CampaignDetails({ campaign, user, onContribute, onBack, 
         ← Back to Dashboard
       </button>
 
-      {/* Banner */}
       <div className="w-full h-72 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 relative">
         <img 
           src={campaign.bannerImage || "https://picsum.photos/seed/campaign/1200/400"} 
-          alt={campaign.title}
+          alt={campaign.title || "Campaign Banner"}
           onError={(e) => { e.target.onerror = null; e.target.src = "https://picsum.photos/seed/water/1200/400"; }}
           className="w-full h-full object-cover"
         />
@@ -51,13 +56,11 @@ export default function CampaignDetails({ campaign, user, onContribute, onBack, 
             <h1 className="text-3xl font-bold text-slate-900 mt-3">{campaign.title}</h1>
           </div>
 
-          {/* Description */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h3 className="font-bold text-lg text-slate-900">About this Campaign</h3>
             <p className="text-slate-600 text-sm leading-relaxed">{campaign.description}</p>
           </div>
 
-          {/* Transparent Tasks Completed Tracker */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-lg text-slate-900">Transparent Task Tracker</h3>
@@ -82,13 +85,12 @@ export default function CampaignDetails({ campaign, user, onContribute, onBack, 
             </div>
           </div>
 
-          {/* Organizer Info */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h3 className="font-bold text-lg text-slate-900">Organizer Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
                 <p className="text-slate-400 font-medium">Contact Email</p>
-                <p className="text-slate-800 font-bold">{campaign.contactEmail || 'support@verifund.org'}</p>
+                <p className="text-slate-800 font-bold">{campaign.contactEmail || 'support@aquatrust.org'}</p>
               </div>
               <div>
                 <p className="text-slate-400 font-medium">Recipient Address</p>
@@ -100,9 +102,11 @@ export default function CampaignDetails({ campaign, user, onContribute, onBack, 
           </div>
         </div>
 
-        {/* Contribute Box */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-fit space-y-6">
-          <h3 className="font-bold text-lg text-slate-900">Funding Progress</h3>
+          <div className="flex justify-between items-center">
+            <h3 className="font-bold text-lg text-slate-900">Funding Progress</h3>
+            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">{percentage}%</span>
+          </div>
           
           <div>
             <div className="flex justify-between text-xs mb-2 text-slate-600">
@@ -110,7 +114,10 @@ export default function CampaignDetails({ campaign, user, onContribute, onBack, 
               <span>Goal: <strong className="text-slate-900">{campaign.goal}</strong></span>
             </div>
             <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-              <div className="bg-emerald-500 h-full w-2/5"></div>
+              <div 
+                className="bg-emerald-500 h-full transition-all duration-500 ease-out" 
+                style={{ width: `${percentage}%` }}
+              ></div>
             </div>
           </div>
 

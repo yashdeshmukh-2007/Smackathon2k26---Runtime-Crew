@@ -11,7 +11,6 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [user, setUser] = useState(null);
 
-  // Sample initial campaigns list
   const [campaigns, setCampaigns] = useState([
     {
       id: '1',
@@ -70,21 +69,28 @@ export default function App() {
 
   const handleContribute = (campaignId, amount) => {
     const numericAmount = parseFloat(amount);
-    
-    // Update raised balance on campaign
-    setCampaigns((prev) => prev.map((c) => {
-      if (c.id === campaignId) {
-        const currentRaised = parseFloat(c.raised.replace(' ETH', '')) || 0;
-        return { ...c, raised: `${(currentRaised + numericAmount).toFixed(2)} ETH` };
-      }
-      return c;
-    }));
+    if (isNaN(numericAmount) || numericAmount <= 0) return;
 
-    // Record user history
+    setCampaigns((prev) =>
+      prev.map((c) => {
+        if (c.id === campaignId) {
+          const currentRaised = parseFloat(c.raised.replace(/[^0-9.]/g, '')) || 0;
+          const newRaised = (currentRaised + numericAmount).toFixed(2);
+          const updated = { ...c, raised: `${newRaised} ETH` };
+
+          if (selectedCampaign && selectedCampaign.id === campaignId) {
+            setSelectedCampaign(updated);
+          }
+          return updated;
+        }
+        return c;
+      })
+    );
+
     if (user) {
       setUser((prev) => ({
         ...prev,
-        history: [{ id: Date.now(), amount: `${numericAmount} ETH`, campaignId }, ...prev.history]
+        history: [{ id: Date.now(), amount: `${numericAmount} ETH`, campaignId }, ...(prev.history || [])]
       }));
     }
 
@@ -93,7 +99,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Navbar */}
       <header className="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center">
         <div 
           onClick={() => { setCurrentRole(null); setSelectedCampaign(null); }}
@@ -121,7 +126,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* Pages */}
       {!currentRole && !selectedCampaign && (
         <HomeSelection 
           onSelectRole={(role) => setCurrentRole(role)}
