@@ -18,7 +18,7 @@ We built this project to balance two core needs:
 ## 🛠️ Architecture at a Glance
 
 The project is split into three clean, independent modules:
-
+Easter egg
 ```text
 Smackathon2k26---Runtime-Crew/
 ├── contracts/      # Solidity contracts, Hardhat tests, and deployment scripts
