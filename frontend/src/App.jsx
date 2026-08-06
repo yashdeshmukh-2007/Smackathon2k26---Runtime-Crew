@@ -148,6 +148,7 @@ export default function App() {
         <HomeSelection 
           onSelectRole={(role) => setCurrentRole(role)}
           onOpenAuth={() => setIsAuthOpen(true)}
+          isAuthenticated={!!user} /* PASSING THE USER AUTHENTICATION STATE */
         />
       )}
 
@@ -185,3 +186,5 @@ export default function App() {
     </div>
   );
 }
+
+ 
