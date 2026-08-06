@@ -27,7 +27,7 @@ frontend/dist/
 frontend/build/
 dist/
 build/
-
+#easter egg 2
 # Editor & System Files
 .vscode/
 .idea/
