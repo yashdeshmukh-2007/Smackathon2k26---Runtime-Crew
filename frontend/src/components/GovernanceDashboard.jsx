@@ -4,8 +4,8 @@ export default function GovernanceDashboard({ onBack }) {
   const [proposals, setProposals] = useState([
     {
       id: 1,
-      title: 'TIP-04: Allocate 50,000 VERI to Disaster Relief Matching Pool',
-      description: 'Proposal to direct treasury funds toward matching community contributions for upcoming emergency campaigns.',
+      title: 'TIP-04: Multi-Currency Matching Pool for Emergency Relief',
+      description: 'Proposal to direct treasury reserves to match community contributions in ETH, USD, and INR.',
       votesFor: 1420,
       votesAgainst: 45,
       status: 'Active'
@@ -35,61 +35,61 @@ export default function GovernanceDashboard({ onBack }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans text-slate-800">
+    <div className="min-h-screen bg-[#F5F3ED] p-6 md:p-12 font-sans text-[#182B22]">
       {/* Header */}
-      <div className="max-w-6xl mx-auto flex justify-between items-center mb-8 border-b border-slate-200 pb-6">
+      <div className="max-w-6xl mx-auto flex justify-between items-center mb-8 border-b border-[#E5E0D8] pb-6">
         <div>
-          <span className="inline-block px-3 py-1 rounded-full bg-violet-50 text-violet-700 text-xs font-semibold uppercase tracking-wider mb-2 border border-violet-100">
-            Community DAO
+          <span className="inline-block px-3 py-1 rounded-full bg-[#E3E8E3] text-[#4A5E53] text-[10px] font-bold uppercase tracking-wider mb-2 border border-[#D5DDD5]">
+            Community Governance & DAO
           </span>
-          <h1 className="text-3xl font-bold text-slate-900">Governance & Proposals</h1>
+          <h1 className="text-3xl font-bold text-[#182B22]">Governance Proposals</h1>
         </div>
         <button 
           onClick={onBack}
-          className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium text-sm transition-colors shadow-sm"
+          className="px-4 py-2 rounded-full bg-white border border-[#E5E0D8] text-[#182B22] hover:bg-[#E3E8E3] font-bold text-xs transition-all shadow-2xs cursor-pointer"
         >
-          &larr; Back to Home
+          ← Back to Portal
         </button>
       </div>
 
-      {/* Main Content Area */}
+      {/* Hero Governance Banner */}
       <div className="max-w-6xl mx-auto">
-        <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl p-8 text-white shadow-md mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="bg-[#182B22] rounded-2xl p-8 text-white shadow-md mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <h2 className="text-2xl font-bold mb-2">Shape the Future of VeriFund</h2>
-            <p className="text-violet-100 text-sm max-w-xl">
-              Your voting power is calculated based on your historical contributions and active participation tokens. Cast your vote on-chain securely.
+            <h2 className="text-2xl font-bold mb-2">Shape the VeriFund Ecosystem</h2>
+            <p className="text-white/80 text-xs max-w-xl leading-relaxed">
+              Your voting power is calculated based on historical contributions in ETH, USD, and INR. Cast your vote on-chain securely.
             </p>
           </div>
           <div className="bg-white/10 backdrop-blur-md px-6 py-4 rounded-xl border border-white/20 text-right">
-            <span className="text-xs text-violet-200 uppercase tracking-wider block">Your Voting Power</span>
+            <span className="text-[10px] text-white/60 uppercase tracking-wider block font-semibold">Voting Power</span>
             <span className="text-2xl font-bold">1,250 VP</span>
           </div>
         </div>
 
         {/* Proposals List */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
-          <h3 className="text-xl font-semibold text-slate-900 mb-6">Active Improvement Proposals</h3>
+        <div className="bg-white rounded-2xl border border-[#E5E0D8] shadow-[0_4px_20px_rgba(24,43,34,0.02)] p-6">
+          <h3 className="text-xl font-bold text-[#182B22] mb-6">Active Improvement Proposals</h3>
           
           <div className="space-y-6">
             {proposals.map((prop) => (
-              <div key={prop.id} className="p-6 rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div key={prop.id} className="p-6 rounded-xl border border-[#E5E0D8] bg-[#F5F3ED]/30 shadow-2xs">
                 <div className="flex justify-between items-start gap-4 mb-2">
-                  <h4 className="font-semibold text-slate-900 text-lg">{prop.title}</h4>
-                  <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-100">
+                  <h4 className="font-bold text-[#182B22] text-lg">{prop.title}</h4>
+                  <span className="px-3 py-1 rounded-full bg-[#E3E8E3] text-[#182B22] text-[10px] font-bold border border-[#D5DDD5]">
                     {prop.status}
                   </span>
                 </div>
-                <p className="text-slate-600 text-sm mb-4 leading-relaxed">{prop.description}</p>
+                <p className="text-[#5C6660] text-xs mb-4 leading-relaxed">{prop.description}</p>
                 
                 {/* Voting Metrics bar */}
-                <div className="flex justify-between text-xs text-slate-500 font-medium mb-2">
+                <div className="flex justify-between text-xs text-[#5C6660] font-semibold mb-2">
                   <span>For: {prop.votesFor} VP</span>
                   <span>Against: {prop.votesAgainst} VP</span>
                 </div>
-                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden mb-6 flex">
+                <div className="w-full bg-[#E5E0D8] h-2.5 rounded-full overflow-hidden mb-6 flex">
                   <div 
-                    className="bg-emerald-500 h-full transition-all" 
+                    className="bg-[#182B22] h-full transition-all" 
                     style={{ width: `${(prop.votesFor / (prop.votesFor + prop.votesAgainst)) * 100}%` }}
                   ></div>
                   <div 
@@ -101,13 +101,13 @@ export default function GovernanceDashboard({ onBack }) {
                 <div className="flex gap-3 justify-end">
                   <button 
                     onClick={() => handleVote(prop.id, 'against')}
-                    className="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors"
+                    className="px-4 py-2 rounded-full border border-rose-300 text-rose-800 hover:bg-rose-50 text-xs font-bold transition-all cursor-pointer"
                   >
                     Vote Against
                   </button>
                   <button 
                     onClick={() => handleVote(prop.id, 'for')}
-                    className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors shadow-sm"
+                    className="px-5 py-2 rounded-full bg-[#182B22] hover:bg-[#0F1E19] text-white text-xs font-bold transition-all shadow-2xs cursor-pointer"
                   >
                     Vote For
                   </button>

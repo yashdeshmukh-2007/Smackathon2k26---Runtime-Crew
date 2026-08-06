@@ -11,16 +11,22 @@ module.exports = {
         sans: ['"Hanken Grotesk"', 'sans-serif'],
       },
       colors: {
-        // Custom theme colors matching your design system
-        primary: {
-          DEFAULT: '#1E293B',
-          light: '#334155',
+        canvas: '#F5F3ED',
+        forest: {
+          DEFAULT: '#182B22',
+          light: '#2C4035',
+          hover: '#0F1E19',
         },
-        accent: {
-          DEFAULT: '#0F766E',
-          light: '#14B8A6',
+        badge: {
+          bg: '#E3E8E3',
+          text: '#4A5E53',
         },
-        background: '#F8FAFC',
+        card: {
+          DEFAULT: '#FFFFFF',
+          border: '#E5E0D8',
+        },
+        muted: '#5C6660',
+        subtext: '#7C8781',
       },
       borderRadius: {
         'xl': '1rem',
@@ -29,4 +35,4 @@ module.exports = {
     },
   },
   plugins: [],
-}
+}
