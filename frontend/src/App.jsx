@@ -4,6 +4,8 @@ import DonorDashboard from './components/DonorDashboard';
 import OrganizerPortal from './components/OrganizerPortal';
 import CampaignDetails from './components/CampaignDetails';
 import AuthModal from './components/AuthModal';
+import AuditorDashboard from './components/AuditorDashboard';
+import GovernanceDashboard from './components/GovernanceDashboard';
 import { supabase } from './supabaseClient';
 
 export default function App() {
@@ -148,7 +150,7 @@ export default function App() {
         <HomeSelection 
           onSelectRole={(role) => setCurrentRole(role)}
           onOpenAuth={() => setIsAuthOpen(true)}
-          isAuthenticated={!!user} /* PASSING THE USER AUTHENTICATION STATE */
+          isAuthenticated={!!user}
         />
       )}
 
@@ -178,6 +180,18 @@ export default function App() {
         />
       )}
 
+      {currentRole === 'auditor' && !selectedCampaign && (
+        <AuditorDashboard 
+          onBack={() => setCurrentRole(null)}
+        />
+      )}
+
+      {currentRole === 'governance' && !selectedCampaign && (
+        <GovernanceDashboard 
+          onBack={() => setCurrentRole(null)}
+        />
+      )}
+
       <AuthModal 
         isOpen={isAuthOpen} 
         onClose={() => setIsAuthOpen(false)} 
@@ -186,5 +200,3 @@ export default function App() {
     </div>
   );
 }
-
- 
