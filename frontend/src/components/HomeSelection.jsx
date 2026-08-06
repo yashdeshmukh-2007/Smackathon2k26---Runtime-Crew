@@ -9,9 +9,12 @@ export default function HomeSelection({ onSelectRole }) {
         <span className="inline-block px-4 py-1.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold uppercase tracking-wider mb-6 border border-teal-100">
           Decentralized Platform
         </span>
+        
+        {/* Updated Heading */}
         <h1 className="font-display text-4xl md:text-6xl font-normal text-slate-900 leading-tight mb-6">
-          Transparent, impactful engagement for modern communities.
+          Impactful community engagement.
         </h1>
+        
         <p className="text-slate-600 text-lg md:text-xl max-w-2xl mx-auto mb-12">
           Select your entry portal to access campaigns, explore initiatives, or manage organizer operations.
         </p>
