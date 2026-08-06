@@ -1,26 +1,10 @@
 import React from 'react';
 
-// Added 'isAuthenticated' to the props
-export default function HomeSelection({ onSelectRole, onOpenAuth, isAuthenticated }) {
+export default function HomeSelection({ onSelectRole }) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between p-6 md:p-12 font-sans text-slate-800">
-      {/* Top Header / Branding */}
-      <header className="flex justify-between items-center max-w-6xl w-full mx-auto">
-        <div className="flex items-center space-x-2">
-          <span className="material-symbols-outlined text-teal-700 text-3xl">token</span>
-          <span className="font-display font-bold text-2xl tracking-tight text-slate-900">VeriFund </span>
-        </div>
-        
-        {/* Conditional Rendering: Only show button if user is NOT authenticated */}
-        {!isAuthenticated && (
-          <button
-            onClick={onOpenAuth}
-            className="px-5 py-2.5 rounded-full bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-colors shadow-sm"
-          >
-            Sign In / Connect Wallet
-          </button>
-        )}
-      </header>
+      
+      {/* REMOVED THE DUPLICATE HEADER FROM HERE */}
 
       {/* Hero Content & Portal Selection */}
       <main className="max-w-4xl w-full mx-auto my-12 text-center">
