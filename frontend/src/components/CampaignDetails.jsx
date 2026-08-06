@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
 
 export default function CampaignDetails({ campaign, user, onContribute, onBack, onOpenAuth }) {
   const [donationAmount, setDonationAmount] = useState('');
+  const [campaignDonations, setCampaignDonations] = useState([]);
 
   if (!campaign) return null;
 
@@ -9,7 +11,23 @@ export default function CampaignDetails({ campaign, user, onContribute, onBack, 
   const numericGoal = parseFloat(campaign.goal?.replace(/[^0-9.]/g, '')) || 1;
   const percentage = Math.min(Math.round((numericRaised / numericGoal) * 100), 100);
 
-  const handleDonateSubmit = (e) => {
+  const fetchCampaignDonations = async () => {
+    if (!campaign?.title) return;
+    const { data, error } = await supabase
+      .from('donations')
+      .select('*')
+      .eq('campaign_name', campaign.title);
+
+    if (!error && data) {
+      setCampaignDonations(data);
+    }
+  };
+
+  useEffect(() => {
+    fetchCampaignDonations();
+  }, [campaign?.title]);
+
+  const handleDonateSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
       onOpenAuth();
@@ -19,8 +37,9 @@ export default function CampaignDetails({ campaign, user, onContribute, onBack, 
       alert('Please enter a valid amount.');
       return;
     }
-    onContribute(campaign.id, donationAmount);
+    await onContribute(campaign.id, donationAmount);
     setDonationAmount('');
+    fetchCampaignDonations();
   };
 
   const tasksCompleted = campaign.tasks || [
@@ -33,7 +52,7 @@ export default function CampaignDetails({ campaign, user, onContribute, onBack, 
     <div className="max-w-5xl mx-auto p-8 space-y-8">
       <button 
         onClick={onBack}
-        className="flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700"
+        className="flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 cursor-pointer"
       >
         ← Back to Dashboard
       </button>
@@ -85,6 +104,35 @@ export default function CampaignDetails({ campaign, user, onContribute, onBack, 
             </div>
           </div>
 
+          {/* Recent Live Campaign Transactions */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-lg text-slate-900">Recent Campaign Transactions</h3>
+              <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full font-semibold">
+                {campaignDonations.length} Recorded
+              </span>
+            </div>
+
+            {campaignDonations.length === 0 ? (
+              <p className="text-xs text-slate-400 italic">No transactions recorded yet for this campaign.</p>
+            ) : (
+              <div className="space-y-2.5 max-h-60 overflow-y-auto">
+                {campaignDonations.map((tx) => (
+                  <div key={tx.id} className="p-3 border border-slate-100 rounded-xl bg-slate-50/50 flex justify-between items-center text-xs">
+                    <div>
+                      <p className="font-bold text-slate-800">{tx.campaign_name}</p>
+                      <p className="text-[10px] text-slate-400 font-mono">Tx: {tx.transaction_hash}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold text-emerald-600">+{tx.amount} ETH</span>
+                      <p className="text-[10px] text-slate-400">{tx.created_at ? new Date(tx.created_at).toLocaleTimeString() : 'Just now'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h3 className="font-bold text-lg text-slate-900">Organizer Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -133,7 +181,7 @@ export default function CampaignDetails({ campaign, user, onContribute, onBack, 
             />
             <button 
               type="submit"
-              className="w-full bg-slate-900 text-white font-medium py-3 rounded-xl hover:bg-slate-800 transition-colors"
+              className="w-full bg-slate-900 text-white font-medium py-3 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
             >
               {user ? 'Contribute Funds' : 'Sign In to Contribute'}
             </button>

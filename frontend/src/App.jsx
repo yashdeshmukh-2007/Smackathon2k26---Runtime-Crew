@@ -4,6 +4,7 @@ import DonorDashboard from './components/DonorDashboard';
 import OrganizerPortal from './components/OrganizerPortal';
 import CampaignDetails from './components/CampaignDetails';
 import AuthModal from './components/AuthModal';
+import { supabase } from './supabaseClient';
 
 export default function App() {
   const [currentRole, setCurrentRole] = useState(null);
@@ -67,9 +68,12 @@ export default function App() {
     setCampaigns((prev) => [formatted, ...prev]);
   };
 
-  const handleContribute = (campaignId, amount) => {
+  const handleContribute = async (campaignId, amount) => {
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) return;
+
+    const campaignObj = campaigns.find((c) => c.id === campaignId);
+    const campaignTitle = campaignObj ? campaignObj.title : 'General Fund';
 
     setCampaigns((prev) =>
       prev.map((c) => {
@@ -87,14 +91,28 @@ export default function App() {
       })
     );
 
+    const activeWallet = user?.address || user?.email || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
+    const randomHash = "0x" + Array.from({ length: 8 }, () => Math.floor(Math.random() * 16).toString(16)).join('') + "...mockhash";
+
+    await supabase
+      .from('donations')
+      .insert([
+        {
+          wallet_address: activeWallet,
+          campaign_name: campaignTitle,
+          amount: numericAmount,
+          transaction_hash: randomHash
+        }
+      ]);
+
     if (user) {
       setUser((prev) => ({
         ...prev,
-        history: [{ id: Date.now(), amount: `${numericAmount} ETH`, campaignId }, ...(prev.history || [])]
+        history: [{ id: Date.now(), amount: `${numericAmount} ETH`, campaign_name: campaignTitle, campaignId }, ...(prev.history || [])]
       }));
     }
 
-    alert(`Successfully contributed ${numericAmount} ETH!`);
+    alert(`Successfully contributed ${numericAmount} ETH to "${campaignTitle}"!`);
   };
 
   return (
