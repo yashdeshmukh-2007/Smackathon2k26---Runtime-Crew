@@ -10,7 +10,6 @@ export default function HomeSelection({ onSelectRole }) {
           Decentralized Platform
         </span>
         
-        {/* Updated Heading */}
         <h1 className="font-display text-4xl md:text-6xl font-normal text-slate-900 leading-tight mb-6">
           Impactful community engagement.
         </h1>
@@ -19,8 +18,13 @@ export default function HomeSelection({ onSelectRole }) {
           Select your entry portal to access campaigns, explore initiatives, or manage organizer operations.
         </p>
 
+        {/* 
+          Grid layout remains md:grid-cols-2. 
+          With 4 items, it will automatically stack as a 2x2 grid on medium+ screens. 
+        */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-          {/* Donor / User Portal Card */}
+          
+          {/* 1. Donor / User Portal Card */}
           <div 
             onClick={() => onSelectRole('donor')}
             className="glass-card p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:-translate-y-1"
@@ -37,7 +41,7 @@ export default function HomeSelection({ onSelectRole }) {
             </span>
           </div>
 
-          {/* Organizer / NGO Portal Card */}
+          {/* 2. Organizer / NGO Portal Card */}
           <div 
             onClick={() => onSelectRole('organizer')}
             className="glass-card p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:-translate-y-1"
@@ -53,6 +57,41 @@ export default function HomeSelection({ onSelectRole }) {
               Launch Campaign Manager <span className="material-symbols-outlined text-sm ml-1">arrow_forward</span>
             </span>
           </div>
+
+          {/* 3. Auditor / Validator Portal Card */}
+          <div 
+            onClick={() => onSelectRole('auditor')}
+            className="glass-card p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:-translate-y-1"
+          >
+            <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-800 flex items-center justify-center mb-6 group-hover:bg-indigo-700 group-hover:text-white transition-colors">
+              <span className="material-symbols-outlined">fact_check</span>
+            </div>
+            <h3 className="font-display text-2xl font-semibold text-slate-900 mb-2">Auditor Portal</h3>
+            <p className="text-slate-600 text-sm leading-relaxed mb-6">
+              Review campaign proposals, verify organizational credentials, and audit fund disbursements to ensure transparency.
+            </p>
+            <span className="inline-flex items-center text-indigo-700 font-medium text-sm group-hover:underline">
+              Access Auditor Tools <span className="material-symbols-outlined text-sm ml-1">arrow_forward</span>
+            </span>
+          </div>
+
+          {/* 4. Governance / DAO Portal Card */}
+          <div 
+            onClick={() => onSelectRole('governance')}
+            className="glass-card p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all cursor-pointer group hover:-translate-y-1"
+          >
+            <div className="w-12 h-12 rounded-xl bg-violet-100 text-violet-800 flex items-center justify-center mb-6 group-hover:bg-violet-700 group-hover:text-white transition-colors">
+              <span className="material-symbols-outlined">how_to_vote</span>
+            </div>
+            <h3 className="font-display text-2xl font-semibold text-slate-900 mb-2">Governance Portal</h3>
+            <p className="text-slate-600 text-sm leading-relaxed mb-6">
+              Participate in community voting, propose platform upgrades, and shape the future of the funding ecosystem.
+            </p>
+            <span className="inline-flex items-center text-violet-700 font-medium text-sm group-hover:underline">
+              View DAO Proposals <span className="material-symbols-outlined text-sm ml-1">arrow_forward</span>
+            </span>
+          </div>
+
         </div>
       </main>
 
@@ -63,3 +102,4 @@ export default function HomeSelection({ onSelectRole }) {
     </div>
   );
 }
+
