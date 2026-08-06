@@ -2,10 +2,8 @@ import React from 'react';
 
 export default function HomeSelection({ onSelectRole }) {
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between p-6 md:p-12 font-sans text-slate-800">
+    <div className="bg-slate-50 flex flex-col justify-between p-6 md:p-12 font-sans text-slate-800">
       
-      {/* REMOVED THE DUPLICATE HEADER FROM HERE */}
-
       {/* Hero Content & Portal Selection */}
       <main className="max-w-4xl w-full mx-auto my-12 text-center">
         <span className="inline-block px-4 py-1.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold uppercase tracking-wider mb-6 border border-teal-100">
@@ -56,7 +54,7 @@ export default function HomeSelection({ onSelectRole }) {
       </main>
 
       {/* Footer */}
-      <footer className="text-center text-xs text-slate-400 max-w-6xl w-full mx-auto">
+      <footer className="text-center text-xs text-slate-400 max-w-6xl w-full mx-auto mt-12">
         &copy; {new Date().getFullYear()} PrepCircle. All rights reserved.
       </footer>
     </div>
